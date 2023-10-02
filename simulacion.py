@@ -1,7 +1,7 @@
 import random
 from scipy import stats
 
-HV = 1000000000
+HV = 100000000
 TF = 300
 
 print("Ingrese cantidad de mesas (NM) y cantidad de lugares en la barra (NN):")
@@ -42,11 +42,15 @@ bt = 0
 tpem = 0
 tpeb = 0
 
+b2m = 0
+
+pb2m = 0
+
 def barra_libre():
-    i = 0
-    while i<=NB and tpsb[i] != HV:
-        i = i + 1
-    return i
+    try:
+        return tpsb.index(HV)
+    except:
+        return -1
 
 def IAB():
     # foldcauchy distribution
@@ -65,13 +69,12 @@ def IAM():
     return round(stats.ncx2.ppf(random_float, f2_df, f2_nc, loc=f2_loc, scale=f2_scale))
 
 def mesa_libre():
-    i = 0
-    while i<= NM and tpsm[i] != HV:
-        i = i + 1
-    return i
+    try:
+        return tpsm.index(HV)
+    except:
+        return -1
 
 def min_tpll():
-    x = random.randint(1, NM)
     if tpllm <= tpllb:
         return tpllm, "mesa"
     else:
@@ -104,15 +107,18 @@ while True:
     while True:
         mintps, mintps_tipo, mintps_idx = min_tps()
         mintpll, mintpll_tipo = min_tpll()
-        if mintpll <= mintps:
+        print("{} - {} - {} - {} - {} - {}".format(str(mintpll), mintpll_tipo,str(mintps),mintpll_tipo,str(ms),str(bs)))
+        if mintpll <= mintps and mintpll != HV:
             if tpllm <= tpllb: # o mintps_tipo == "mesa"
                 T = tpllm
                 stllm = stllm + T
                 iAM = IAM()
+                # print(iAM)
                 tpllm = T + iAM
+                # print(tpllm)
                 ms = ms + 1
                 mt = mt + 1
-                if ms <= NM:
+                if ms <= NM: 
                     ML = mesa_libre()
                     tcm = TCM()
                     stcm = stcm + tcm
@@ -122,6 +128,7 @@ while True:
                 T = tpllb
                 stllb = stllb + T
                 iab = IAB()
+                # print(iab)
                 tpllb = T + iab
                 bs = bs + 1
                 if bs <= NB:
@@ -133,6 +140,7 @@ while True:
                     stob[BL] = stob[BL] + (T - itob[BL])
                 else:
                     if ms < NM:
+                        b2m = b2m + 1
                         stllb = stllb - T
                         stllm = stllm + T
                         bs = bs - 1
@@ -164,29 +172,39 @@ while True:
                     stcm = stcm + tcm
                     tpsm[mintps_idx] = T + tcm
                 else:
-                    if bs >= NB:
+                    if bs > NB:
                         bs = bs - 1
+                        b2m = b2m + 1
                         ms = ms + 1
                         tcm = TCM()
-                        stcm = stcm + tcm
+                        stcb = stcb + tcm
                         tpsm[mintps_idx] = T + tcm
+                        stsb = stsb + T + tcm
+                        stsm = stsm - (T + tcm)
                     else:
                         itom[mintps_idx] = T
                         tpsm[mintps_idx] = HV
         if T >= TF: break
+    if ms <= 0 and bs <= 0: break
     tpllm = HV
     tpllb = HV
-    if ms == 0 and bs == 0: break
 print("RESULTADOS")
 print("==========")
-print("Escenario: {} mesas y {} luegares en la barra".format(str(NM),str(NB)))
+print("Escenario: {} mesas y {} lugares en la barra. [BT: {} - MT: {}]".format(str(NM),str(NB),str(bt),str(mt)))
 tpem = (stsm - stllm - stcm) / mt
-print("TPEM: {}".format(str(tpem)))
+print("TPEM: {:0.2f} minutos".format(tpem))
 tpeb = (stsb - stllb - stcb) / bt
-print("TPEB: {}".format(str(tpeb)))
+print("TPEB: {:0.2f} minutos".format(tpeb))
+pb2m = (b2m/(b2m + bt)) * 100
+print("PB2M: {:0.2f}%".format(pb2m))
 for i in range(0, NM, 1):
-    ptom[i] = stom[i] / T * 100
-    print("PTO Mesa {}: {}".format(str(i+1),str(ptom[i])))
+    # para los no usados
+    if stom[i] == 0 and itom[i] == 0:
+        stom[i] = T
+    ptom[i] = (stom[i] / T) * 100
+    print("PTO Mesa {}: {:0.2f}%".format(str(i+1),ptom[i]))
 for i in range(0, NB, 1):
-    ptob[i] = stob[i] / T * 100
-    print("PTO Barra {}: {}".format(str(i+1),str(ptob[i])))
+    if stob[i] == 0 and itob[i] == 0:
+        stob[i] = T
+    ptob[i] = (stob[i] / T) * 100
+    print("PTO Barra {}: {:0.2f}%".format(str(i+1),ptob[i]))
